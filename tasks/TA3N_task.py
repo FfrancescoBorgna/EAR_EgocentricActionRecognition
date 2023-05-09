@@ -41,8 +41,7 @@ class TA3N_task(tasks.Task, ABC):
 
         # self.accuracy and self.loss track the evolution of the accuracy and the training loss
         self.accuracy_class = utils.Accuracy(topk=(1, 5), classes=num_classes)
-        self.accuracy_td = utils.Accuracy(classes=2)
-        self.accuracy_sd = utils.Accuracy(classes=2)
+       
         
         self.loss_class = utils.AverageMeter()
         self.loss_td = utils.AverageMeter()
@@ -79,23 +78,21 @@ class TA3N_task(tasks.Task, ABC):
         Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor]]
             output logits and features
         """
-        logits_class = {}
-        logits_td = {}
-        logits_sd = {}
+        # logits_class = {}
+        # logits_td = {}
+        # logits_sd = {}
+        logits = {"class":{},
+                  "td":{},
+                  "sd":{}}
         ""
 
         features = {}
         for i_m, m in enumerate(self.modalities):
-            logits_sd[m],logits_td[m],logits_class[m],_= self.task_models[m](x=data[m], **kwargs)
-            # if i_m == 0:
-            #     for k in feat.keys():
-            #         features[k] = {}
-            # for k in feat.keys():
-            #     features[k][m] = feat[k]
+            logits["sd"][m],logits["td"][m],logits["class"][m],_= self.task_models[m](x=data[m], **kwargs)
 
-        return logits_sd,logits_td,logits_class
+        return logits
 
-    def compute_loss(self, logits_sd: Dict[str, torch.Tensor],logits_td: Dict[str, torch.Tensor],logits_class: Dict[str, torch.Tensor], label_class: torch.Tensor,label_d: torch.Tensor, loss_weight: float=1.0):
+    def compute_loss(self, logits, label_class: torch.Tensor,label_d: torch.Tensor, loss_weight: float=1.0,domain="source"):
         """Fuse the logits from different modalities and compute the classification loss.
 
         Parameters
@@ -107,20 +104,31 @@ class TA3N_task(tasks.Task, ABC):
         loss_weight : float, optional
             weight of the classification loss, by default 1.0
         """
-        fused_logits_class = reduce(lambda x, y: x + y, logits_class.values())
-        fused_logits_sd = reduce(lambda x, y: x + y, logits_sd.values())
-        fused_logits_td = reduce(lambda x, y: x + y, logits_td.values())
+        if(domain == "source"): #source
+            fused_logits_class = reduce(lambda x, y: x + y, logits["class"].values())
+            fused_logits_sd = reduce(lambda x, y: x + y, logits["sd"].values())
+            fused_logits_td = reduce(lambda x, y: x + y, logits["td"].values())
         
-        loss_class = self.criterion_class(fused_logits_class, label_class) / self.num_clips ############ PROBLEMA
-        loss_sd = self.criterion_sd(fused_logits_sd, label_d) / self.num_clips
-        loss_td = self.criterion_td(fused_logits_td, label_d) / self.num_clips
+            loss_class = self.criterion_class(fused_logits_class, label_class) / self.num_clips ############ PROBLEMA
+            loss_sd = self.criterion_sd(fused_logits_sd, label_d) / self.num_clips
+            loss_td = self.criterion_td(fused_logits_td, label_d) / self.num_clips
 
-        loss = loss_class-loss_sd-loss_td
-        # Update the loss value, weighting it by the ratio of the batch size to the total 
-        # batch size (for gradient accumulation)
-        self.loss.update(torch.mean(loss_weight * loss) / (self.total_batch / self.batch_size), self.batch_size)
+            loss = loss_class-loss_sd-loss_td
+            # Update the loss value, weighting it by the ratio of the batch size to the total 
+            # batch size (for gradient accumulation)
+            self.loss.update(torch.mean(loss_weight * loss) / (self.total_batch / self.batch_size), self.batch_size)
+        else: #target
+            fused_logits_sd = reduce(lambda x, y: x + y, logits["sd"].values())
+            fused_logits_td = reduce(lambda x, y: x + y, logits["td"].values())
 
-    def compute_accuracy(self, logits: Dict[str, torch.Tensor], label: torch.Tensor):
+            loss_sd = self.criterion_sd(fused_logits_sd, label_d) / self.num_clips
+            loss_td = self.criterion_td(fused_logits_td, label_d) / self.num_clips
+
+            loss = -loss_sd-loss_td
+            self.loss.update(torch.mean(loss_weight * loss) / (self.total_batch / self.batch_size), self.batch_size)
+
+    
+    def compute_accuracy(self, logits_source: Dict[str, torch.Tensor], label: torch.Tensor):
         """Fuse the logits from different modalities and compute the classification accuracy.
 
         Parameters
@@ -130,6 +138,7 @@ class TA3N_task(tasks.Task, ABC):
         label : torch.Tensor
             ground truth
         """
+        logits = logits_source["class"]
         fused_logits = reduce(lambda x, y: x + y, logits.values())
         self.accuracy.update(fused_logits, label)
 

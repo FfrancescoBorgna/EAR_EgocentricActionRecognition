@@ -53,7 +53,7 @@ class Classifier(nn.Module):
         self.gtd.add_module('gtd_bn2', nn.BatchNorm1d(100))
         self.gtd.add_module('gtd_relu2', nn.ReLU(True))      
         self.gtd.add_module('gtd_fc3', nn.Linear(100, 1))
-        self.gtd.add_module('gtd_softmax', nn.LogSoftmax())
+        self.gtd.add_module('gtd_softmax', nn.Sigmoid())
         
         #Gy
         self.gy = nn.Sequential()
@@ -64,13 +64,13 @@ class Classifier(nn.Module):
     def forward(self, x,alpha = 1):
         x = self.gsf(x)
         #spatial domain out
-        spatial_domain_out =  ReverseLayerF.apply(self.gsd(x),alpha)
+        spatial_domain_out =  torch.mean(ReverseLayerF.apply(self.gsd(x),alpha))
         #temporal aggregation 
         if(self.temporal_type == "TRN"):
             raise NotImplementedError
         else:
-            temporal_aggregation = torch.mean(x,0)
-            temporal_aggregation = temporal_aggregation.reshape([1,x.size()[1]])
+            temporal_aggregation = torch.mean(x,1)
+         
         #temporal domain
         temporal_domain_in = self.gtd(temporal_aggregation)
         temporal_domain_out =  ReverseLayerF.apply(temporal_domain_in,alpha)

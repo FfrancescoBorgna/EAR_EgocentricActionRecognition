@@ -134,7 +134,7 @@ def train(action_classifier, train_loader, val_loader, device, num_classes):
         # the following code is necessary as we do not reason in epochs so as soon as the dataloader is finished we need
         # to redefine the iterator
         try:
-            source_data, source_label = next(data_loader_source)
+            source_data, source_label_class = next(data_loader_source)
             source_label_domain = 0
 
             target_data, target_label = next(data_loader_target)
@@ -154,18 +154,26 @@ def train(action_classifier, train_loader, val_loader, device, num_classes):
         ''' Action recognition'''
         "******** We start by using the source ****************"
         source_label = source_label.to(device)
+        
         data_s = {}
-       
-
         for m in modalities:
             data_s[m] = source_data[m].to(device)
         
 
-        logits_sd,logits_td,logits_class = action_classifier.forward(data_s)
-        action_classifier.compute_loss(logits_sd,logits_td,logits_class, source_label_class, loss_weight=1)
-        action_classifier.backward(retain_graph=False)
-        action_classifier.compute_accuracy(logits_sd,logit_td,logit_class, source_label)
+        logits_source = action_classifier.forward(data_s)
+        action_classifier.compute_loss(logits_source, source_label_class, loss_weight=1,domain="source")
+        'Target '
+        data_t={}
+        for m in modalities:
+            data_t[m] = target_data[m].to(device)
 
+        logits_target = action_classifier.forward(data_t)
+        action_classifier.compute_loss(logits_target, target_label, loss_weight=1,domain="target")
+
+
+        action_classifier.backward(retain_graph=False)
+        action_classifier.compute_accuracy(logits_source, source_label)
+        
         # update weights and zero gradients if total_batch samples are passed
         if gradient_accumulation_step:
             logger.info("[%d/%d]\tlast Verb loss: %.4f\tMean verb loss: %.4f\tAcc@1: %.2f%%\tAccMean@1: %.2f%%" %
