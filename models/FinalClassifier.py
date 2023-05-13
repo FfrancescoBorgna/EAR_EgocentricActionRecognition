@@ -17,27 +17,28 @@ class Classifier(nn.Module):
         self.temporal_type = temporal_type
         
         #GSF
-        n_gsf_out = 256
+        n_gsf_out = 512
+        self.n_gsf_out = n_gsf_out
         self.gsf = nn.Sequential()
-        self.gsf.add_module('gsf_fc1', nn.Linear(self.n_feat[1], 512))
-        self.gsf.add_module('gsf_bn1', nn.BatchNorm1d(512))
+        self.gsf.add_module('gsf_fc1', nn.Linear(self.n_feat[1], n_gsf_out))
+        self.gsf.add_module('gsf_bn1', nn.BatchNorm1d(n_features[0]))
         self.gsf.add_module('gsf_relu1', nn.ReLU(True))
         self.gsf.add_module('gsf_drop1', nn.Dropout())
-        self.gsf.add_module('gsf_fc2', nn.Linear(512, n_gsf_out))
-        self.gsf.add_module('gsf_bn2', nn.BatchNorm1d(n_gsf_out))
+        self.gsf.add_module('gsf_fc2', nn.Linear(n_gsf_out, n_gsf_out))
+        self.gsf.add_module('gsf_bn2', nn.BatchNorm1d(n_features[0]))
         self.gsf.add_module('gsf_relu2', nn.ReLU(True))
 
         #Spatial Domain Discriminator
         self.gsd = nn.Sequential()
-        self.gsd.add_module('gsd_fc1', nn.Linear(n_gsf_out, 256))
+        self.gsd.add_module('gsd_fc1', nn.Linear(n_gsf_out*n_features[0], 256))
         self.gsd.add_module('gsd_bn1', nn.BatchNorm1d(256))
         self.gsd.add_module('gsd_relu1', nn.ReLU(True))
         self.gsd.add_module('gsd_drop1', nn.Dropout())
         self.gsd.add_module('gsd_fc2', nn.Linear(256, 256))
         self.gsd.add_module('gsd_bn2', nn.BatchNorm1d(256))
         self.gsd.add_module('gsd_relu2', nn.ReLU(True))      
-        self.gsd.add_module('gsd_fc3', nn.Linear(256, 1))
-        self.gsd.add_module('gsd_softmax', nn.LogSoftmax(dim=1)) #sulle righe
+        self.gsd.add_module('gsd_fc3', nn.Linear(256, 2))
+        self.gsd.add_module('gsd_softmax', nn.LogSoftmax(dim=1))
         
         #Temporal Pooling
         if(temporal_type == "TRN"):
@@ -45,41 +46,38 @@ class Classifier(nn.Module):
         
         #Temporal Domain discriminator
         self.gtd = nn.Sequential()
-        self.gtd.add_module('gtd_fc1', nn.Linear(n_gsf_out, 100))
-        self.gtd.add_module('gtd_bn1', nn.BatchNorm1d(100))
+        self.gtd.add_module('gtd_fc1', nn.Linear(n_gsf_out, 512))
+        self.gtd.add_module('gtd_bn1', nn.BatchNorm1d(512))
         self.gtd.add_module('gtd_relu1', nn.ReLU(True))
         self.gtd.add_module('gtd_drop1', nn.Dropout())
-        self.gtd.add_module('gtd_fc2', nn.Linear(100, 100))
-        self.gtd.add_module('gtd_bn2', nn.BatchNorm1d(100))
+        self.gtd.add_module('gtd_fc2', nn.Linear(512, 256))
+        self.gtd.add_module('gtd_bn2', nn.BatchNorm1d(256))
         self.gtd.add_module('gtd_relu2', nn.ReLU(True))      
-        self.gtd.add_module('gtd_fc3', nn.Linear(100, 1))
-        self.gtd.add_module('gtd_softmax', nn.Sigmoid())
+        self.gtd.add_module('gtd_fc3', nn.Linear(256, 2))
+        self.gtd.add_module('gtd_softmax', nn.LogSoftmax(dim=1))
         
         #Gy
         self.gy = nn.Sequential()
-        self.gy.add_module('c_fc1', nn.Linear(100, num_class))
+        self.gy.add_module('c_fc1', nn.Linear(n_gsf_out, num_class))
         self.gy.add_module('c_softmax', nn.LogSoftmax(dim=1))
 
 
     def forward(self, x,alpha = 1):
         x = self.gsf(x)
         #spatial domain out
-        spatial_domain_out =  torch.mean(ReverseLayerF.apply(self.gsd(x),alpha))
+        reverse_features = ReverseLayerF.apply(x,alpha)
+        spatial_domain_out = self.gsd(reverse_features.view(-1,5*self.n_gsf_out))
         #temporal aggregation 
         if(self.temporal_type == "TRN"):
             raise NotImplementedError
         else:
             temporal_aggregation = torch.mean(x,1)
-         
         #temporal domain
-        temporal_domain_in = self.gtd(temporal_aggregation)
-        temporal_domain_out =  ReverseLayerF.apply(temporal_domain_in,alpha)
+        temporal_domain_out =  self.gtd(ReverseLayerF.apply(temporal_aggregation,alpha))
         class_out = self.gy(temporal_aggregation)
 
         return spatial_domain_out,temporal_domain_out, class_out
-
-
-
+      
 class ReverseLayerF(Function):
 
     @staticmethod
@@ -93,4 +91,3 @@ class ReverseLayerF(Function):
         output = grad_output.neg() * ctx.alpha
 
         return output, None
-

@@ -109,6 +109,13 @@ class AverageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
+    
+    def add(self,val,n=1):
+        self.val += val
+        self.acc += val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
 
 
 def pformat_dict(d, indent=0):

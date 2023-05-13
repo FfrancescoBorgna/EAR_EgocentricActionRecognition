@@ -14,7 +14,7 @@
             "justMyCode": true,
             "args": ["name=secTentativo",
                     "config=configs/default.yaml" ,
-                    //"dataset.shift=D1-D2 ",
+                    "dataset.shift=D1-D2 ",
                     "dataset.RGB.data_path=ek_data/frames/",
                     "action=train"
                 ]

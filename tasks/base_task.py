@@ -9,8 +9,8 @@ from utils.logger import logger
 from typing import Dict, Tuple
 
 
-class TA3N_task(tasks.Task, ABC):
-    """Ta3N."""
+class base_task(tasks.Task, ABC):
+    """Action recognition model."""
     
     def __init__(self, name: str, task_models: Dict[str, torch.nn.Module], batch_size: int, 
                  total_batch: int, models_dir: str, num_classes: int,
@@ -41,24 +41,16 @@ class TA3N_task(tasks.Task, ABC):
 
         # self.accuracy and self.loss track the evolution of the accuracy and the training loss
         self.accuracy = utils.Accuracy(topk=(1, 5), classes=num_classes)
-        self.accuracy_class = utils.Accuracy(topk=(1, 5), classes=num_classes)
-        self.accuracy_td = utils.Accuracy(classes=2)
-        self.accuracy_sd = utils.Accuracy(classes=2)
-        
         self.loss = utils.AverageMeter()
-        self.loss_class = utils.AverageMeter() ########## controlla ##########
+        self.loss_class = utils.AverageMeter()
         self.loss_td = utils.AverageMeter()
-        self.loss_sd = utils.AverageMeter()
         
         self.num_clips = num_clips
 
         # Use the cross entropy loss as the default criterion for the classification task
-        self.criterion_class = torch.nn.CrossEntropyLoss(weight=None, size_average=None, ignore_index=-100,
+        self.criterion = torch.nn.CrossEntropyLoss(weight=None, size_average=None, ignore_index=-100,
                                                    reduce=None, reduction='none')
-        self.criterion_td = torch.nn.CrossEntropyLoss(weight=None, size_average=None, ignore_index=-100,
-                                                   reduce=None, reduction='none')
-        self.criterion_sd = torch.nn.CrossEntropyLoss(weight=None, size_average=None, ignore_index=-100,
-                                                   reduce=None, reduction='none')
+        
         # Initializeq the model parameters and the optimizer
         optim_params = {}
         self.optimizer = dict()
@@ -81,21 +73,14 @@ class TA3N_task(tasks.Task, ABC):
         Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor]]
             output logits and features
         """
-        # logits_class = {}
-        # logits_td = {}
-        # logits_sd = {}
-        logits = {"class":{},
-                  "td":{},
-                  "sd":{}}
-        ""
-
-        features = {}
+        logits = {}
+        
         for i_m, m in enumerate(self.modalities):
-            logits["sd"][m],logits["td"][m],logits["class"][m]= self.task_models[m](x=data[m], **kwargs)
-
+            logits[m] = self.task_models[m](x=data[m], **kwargs)
+    
         return logits
 
-    def compute_loss(self, logits, label_class: torch.Tensor,label_d: torch.Tensor, loss_weight: float=1.0,domain = "source"):
+    def compute_loss(self, logits_s: Dict[str, torch.Tensor], label: torch.Tensor, loss_weight: float=1.0,domain="source"):
         """Fuse the logits from different modalities and compute the classification loss.
 
         Parameters
@@ -107,32 +92,28 @@ class TA3N_task(tasks.Task, ABC):
         loss_weight : float, optional
             weight of the classification loss, by default 1.0
         """
-        if(domain == "source"): #source
-            fused_logits_class = reduce(lambda x, y: x + y, logits["class"].values())
-            fused_logits_sd = reduce(lambda x, y: x + y, logits["sd"].values())
-            fused_logits_td = reduce(lambda x, y: x + y, logits["td"].values())
-        
-            self.loss_class.update(self.criterion_class(fused_logits_class, label_class))
-            self.loss_sd.update(self.criterion_sd(fused_logits_sd, label_d))
-            self.loss_td.update(self.criterion_td(fused_logits_td, label_d))
-
-            loss = self.loss_class.val+self.loss_sd.val+self.loss_td.val
+       
+        fused_logits = reduce(lambda x, y: x + y, logits_s.values())
+        fused_logits_class = fused_logits[0]
+        fused_logits_domain = fused_logits[1]
+        if(domain=="source"):
+            self.loss_class.update(self.criterion(fused_logits_class, label))
+            label_d = torch.zeros([label.shape[0]],dtype=int)
+            self.loss_td.update(self.criterion(fused_logits_domain, label_d))
             # Update the loss value, weighting it by the ratio of the batch size to the total 
             # batch size (for gradient accumulation)
+            loss = self.loss_class.val + self.loss_td.val;
             self.loss.update(torch.mean(loss_weight * loss) / (self.total_batch / self.batch_size), self.batch_size)
-        else: #target
-            fused_logits_sd = reduce(lambda x, y: x + y, logits["sd"].values())
-            fused_logits_td = reduce(lambda x, y: x + y, logits["td"].values())
-            
-            
-            self.loss_sd.update(self.criterion_sd(fused_logits_sd, label_d))
-            self.loss_td.update(self.criterion_td(fused_logits_td, label_d))
+        else:
+            label_d = torch.ones([label.shape[0]],dtype=int)
+            self.loss_td.add(self.criterion(fused_logits_domain, label_d))
+            loss =  self.loss_td.val
+            self.loss.add(torch.mean(loss_weight * loss) / (self.total_batch / self.batch_size), self.batch_size)
+        
 
-            loss = self.loss_sd.val+self.loss_td.val
-            self.loss.update(torch.mean(loss_weight * loss) / (self.total_batch / self.batch_size), self.batch_size)
+        
 
-    
-    def compute_accuracy(self, logits_source: Dict[str, torch.Tensor], label: torch.Tensor):
+    def compute_accuracy(self, logits: Dict[str, torch.Tensor], label: torch.Tensor):
         """Fuse the logits from different modalities and compute the classification accuracy.
 
         Parameters
@@ -142,9 +123,8 @@ class TA3N_task(tasks.Task, ABC):
         label : torch.Tensor
             ground truth
         """
-        logits = logits_source["class"]
         fused_logits = reduce(lambda x, y: x + y, logits.values())
-        self.accuracy.update(fused_logits, label)
+        self.accuracy.update(fused_logits[0], label)
 
     def wandb_log(self):
         """Log the current loss and top1/top5 accuracies to wandb."""
@@ -174,9 +154,7 @@ class TA3N_task(tasks.Task, ABC):
         This method must be called after each optimization step.
         """
         self.loss_class.reset()
-        self.loss_sd.reset()
         self.loss_td.reset()
-
         self.loss.reset()
 
     def reset_acc(self):
@@ -205,10 +183,3 @@ class TA3N_task(tasks.Task, ABC):
             whether the computational graph should be retained, by default False
         """
         self.loss.val.backward(retain_graph=retain_graph)
-
-    def get_losses(self):
-        losses = torch.zeros([3])
-        losses[0] = torch.mean(self.loss_class.val)
-        losses[1] = torch.mean(self.loss_sd.val)
-        losses[2] = torch.mean(self.loss_td.val)
-        return losses
