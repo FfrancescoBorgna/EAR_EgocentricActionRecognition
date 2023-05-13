@@ -125,11 +125,11 @@ class TA3N_task(tasks.Task, ABC):
             fused_logits_td = reduce(lambda x, y: x + y, logits["td"].values())
             
             
-            self.loss_sd.update(self.criterion_sd(fused_logits_sd, label_d))
-            self.loss_td.update(self.criterion_td(fused_logits_td, label_d))
+            self.loss_sd.add(self.criterion_sd(fused_logits_sd, label_d))
+            self.loss_td.add(self.criterion_td(fused_logits_td, label_d))
 
             loss = self.loss_sd.val+self.loss_td.val
-            self.loss.update(torch.mean(loss_weight * loss) / (self.total_batch / self.batch_size), self.batch_size)
+            self.loss.add(torch.mean(loss_weight * loss) / (self.total_batch / self.batch_size), self.batch_size)
 
     
     def compute_accuracy(self, logits_source: Dict[str, torch.Tensor], label: torch.Tensor):
