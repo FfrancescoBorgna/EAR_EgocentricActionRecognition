@@ -191,3 +191,5 @@ checkpoints/
 TEST_RESULTS/
 saved_features/
 train_images/
+saved_models/
+Experiments_logs/
