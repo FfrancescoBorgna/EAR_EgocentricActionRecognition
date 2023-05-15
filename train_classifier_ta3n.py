@@ -85,7 +85,7 @@ def main():
                                                  batch_size=args.batch_size, shuffle=False,
                                                  num_workers=args.dataset.workers, pin_memory=True, drop_last=False)
         loss_train = train(action_classifier, train_loader, val_loader, device, num_classes)
-        torch.save(loss_train, 'train_images/loss_train.pt')
+        torch.save(loss_train, 'train_images/loss_train_avg.pt')
         
     elif args.action == "validate":
         if args.resume_from is not None:
