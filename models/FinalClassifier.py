@@ -100,8 +100,8 @@ class Classifier(nn.Module):
         #temporal aggregation 
         if(self.temporal_type == "TRN"):
             TRN_out = self.trn(x)
-            w = torch.zeros([self.batch_size,1,self.n_feat[0]-1]) #the 1 is due to tensor.bmm multiplication
-            grd_outs = torch.zeros([self.batch_size,self.n_feat[0]-1,2])
+            w = torch.zeros([x.shape[0],1,self.n_feat[0]-1]) #the 1 is due to tensor.bmm multiplication
+            grd_outs = torch.zeros([x.shape[0],self.n_feat[0]-1,2])
             #compute weights
             for i in range(self.n_feat[0]-1):
                 grd_outs[:,i,:] = self.grd_all[i](ReverseLayerF.apply(TRN_out[:,i,:],alpha))

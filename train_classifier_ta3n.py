@@ -117,7 +117,7 @@ def train(action_classifier, train_loader, val_loader, device, num_classes):
     iteration = action_classifier.current_iter * (args.total_batch // args.batch_size)
     min_dataset_size = min(len(data_loader_target._dataset), len(data_loader_source._dataset))
 
-    loss_train = torch.zeros([int(training_iterations / (args.total_batch // args.batch_size)),3]) #
+    loss_train = torch.zeros([int(training_iterations / (args.total_batch // args.batch_size)),4]) #
     # the batch size should be total_batch but batch accumulation is done with batch size = batch_size.
     # real_iter is the number of iterations if the batch size was really total_batch
     for i in range(int(iteration), training_iterations):
@@ -236,7 +236,6 @@ def validate(model, val_loader, device, it, num_classes):
     with torch.no_grad():
         for i_val, (data, label) in enumerate(val_loader):
             label = label.to(device)
-
             logits = model(data)
             model.compute_accuracy(logits, label)
 
