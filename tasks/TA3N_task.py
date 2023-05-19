@@ -49,6 +49,7 @@ class TA3N_task(tasks.Task, ABC):
         self.loss_class = utils.AverageMeter() ########## controlla ##########
         self.loss_td = utils.AverageMeter()
         self.loss_sd = utils.AverageMeter()
+        self.loss_rd = utils.AverageMeter()
         
         self.num_clips = num_clips
 
@@ -58,6 +59,8 @@ class TA3N_task(tasks.Task, ABC):
         self.criterion_td = torch.nn.CrossEntropyLoss(weight=None, size_average=None, ignore_index=-100,
                                                    reduce=None, reduction='none')
         self.criterion_sd = torch.nn.CrossEntropyLoss(weight=None, size_average=None, ignore_index=-100,
+                                                   reduce=None, reduction='none')
+        self.criterion_rd = torch.nn.CrossEntropyLoss(weight=None, size_average=None, ignore_index=-100,
                                                    reduce=None, reduction='none')
         # Initializeq the model parameters and the optimizer
         optim_params = {}
@@ -86,12 +89,13 @@ class TA3N_task(tasks.Task, ABC):
         # logits_sd = {}
         logits = {"class":{},
                   "td":{},
-                  "sd":{}}
+                  "sd":{},
+                  "rd":{}}
         ""
 
         features = {}
         for i_m, m in enumerate(self.modalities):
-            logits["sd"][m],logits["td"][m],logits["class"][m]= self.task_models[m](x=data[m], **kwargs)
+            logits["sd"][m],logits["td"][m],logits["class"][m],logits["rd"][m]= self.task_models[m](x=data[m], **kwargs)
 
         return logits
 
@@ -121,10 +125,15 @@ class TA3N_task(tasks.Task, ABC):
                 fused_logits_td = reduce(lambda x, y: x + y, logits["td"].values())
                 self.loss_td.update(self.criterion_td(fused_logits_td, label_d))
                 loss +=  self.loss_td.val
-    
-            # Update the loss value, weighting it by the ratio of the batch size to the total 
-            # batch size (for gradient accumulation)
-            self.loss.update(torch.mean(loss_weight * loss) / (self.total_batch / self.batch_size), self.batch_size)
+            # TODO
+            if(self.model_args['RGB']["temporal-type"]=="TRN"):
+                fused_logits_rd = reduce(lambda x, y: x + y, logits["rd"].values())
+                loss_rd = 0;
+                for i in range(0,self.num_clips-1):
+                    loss_rd += self.criterion_rd(fused_logits_rd[:,i,:], label_d)
+                # Update the loss value, weighting it by the ratio of the batch size to the total 
+                # batch size (for gradient accumulation)
+                self.loss_rd.update(torch.mean(loss_weight * loss_rd) / (self.total_batch / self.batch_size), self.batch_size)
         else: #target
             fused_logits_sd = reduce(lambda x, y: x + y, logits["sd"].values())
             fused_logits_td = reduce(lambda x, y: x + y, logits["td"].values())
@@ -135,7 +144,15 @@ class TA3N_task(tasks.Task, ABC):
             if(self.model_args['RGB']["ablation"]["gtd"]):
                 self.loss_td.add(self.criterion_td(fused_logits_td, label_d))
                 loss += self.loss_td.val
-            
+            if(self.model_args['RGB']["temporal-type"]=="TRN"):
+                fused_logits_rd = reduce(lambda x, y: x + y, logits["rd"].values())
+                loss_rd = 0;
+                for i in range(0,self.num_clips-1):
+                    loss_rd += self.criterion_rd(fused_logits_rd[:,i,:], label_d)
+                # Update the loss value, weighting it by the ratio of the batch size to the total 
+                # batch size (for gradient accumulation)
+                self.loss_rd.add(torch.mean(loss_weight * loss_rd) / (self.total_batch / self.batch_size), self.batch_size)
+#†
             loss = self.loss_sd.val+self.loss_td.val
             self.loss.add(torch.mean(loss_weight * loss) / (self.total_batch / self.batch_size), self.batch_size)
 
@@ -184,6 +201,7 @@ class TA3N_task(tasks.Task, ABC):
         self.loss_class.reset()
         self.loss_sd.reset()
         self.loss_td.reset()
+        self.loss_rd.reset()
 
         self.loss.reset()
 
@@ -215,10 +233,12 @@ class TA3N_task(tasks.Task, ABC):
         self.loss.val.backward(retain_graph=retain_graph)
 
     def get_losses(self):
-        losses = torch.zeros([3])
+        losses = torch.zeros([4])
         losses[0] = torch.mean(self.loss_class.avg)
         if(self.model_args['RGB']['ablation']['gsd']):
             losses[1] = torch.mean(self.loss_sd.avg)
         if(self.model_args['RGB']['ablation']['gtd']):    
             losses[2] = torch.mean(self.loss_td.avg)
+        if(self.model_args['RGB']['ablation']['gtd']):    
+            losses[3] = torch.mean(self.loss_rd.avg)
         return losses

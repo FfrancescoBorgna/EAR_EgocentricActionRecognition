@@ -104,10 +104,11 @@ class Classifier(nn.Module):
             grd_outs = torch.zeros([self.batch_size,self.n_feat[0]-1,2])
             #compute weights
             for i in range(self.n_feat[0]-1):
-                grd_outs[:,i,:] = self.grd_all[i](TRN_out[:,i,:])
+                grd_outs[:,i,:] = self.grd_all[i](ReverseLayerF.apply(TRN_out[:,i,:],alpha))
                 w[:,0,i] = torch.sum(torch.special.entr(grd_outs[:,i,:]),axis=1)
 
             temporal_aggregation = torch.bmm(w,TRN_out)
+            temporal_aggregation = temporal_aggregation.reshape(temporal_aggregation.shape[0],temporal_aggregation.shape[2])
         else:
             temporal_aggregation = torch.mean(x,1)
         #temporal domain
@@ -116,7 +117,7 @@ class Classifier(nn.Module):
         
         class_out = self.gy(temporal_aggregation)
 
-        return spatial_domain_out,temporal_domain_out, class_out
+        return spatial_domain_out,temporal_domain_out, class_out,grd_outs
       
 class ReverseLayerF(Function):
 

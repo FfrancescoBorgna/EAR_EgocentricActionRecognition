@@ -183,7 +183,7 @@ def train(action_classifier, train_loader, val_loader, device, num_classes):
         #compute loss on target
         action_classifier.compute_loss(logits_t, target_label, target_label_domain, loss_weight=1, domain="target")
         #backward based on updated losses
-        action_classifier.backward(retain_graph=False)
+        action_classifier.backward(retain_graph=True)
         #accuracy update
         action_classifier.compute_accuracy(logits_s, source_label)
 

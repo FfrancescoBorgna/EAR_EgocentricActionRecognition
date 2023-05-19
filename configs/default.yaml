@@ -49,6 +49,7 @@ models:
     lr: 1e-2
     sgd_momentum: 0.8
     weight_decay: 1e-7
+    temporal-type: TRN
     ablation: 
       gsd: True
       gtd: False
