@@ -53,4 +53,4 @@ models:
     ablation: 
       gsd: True
       gtd: False
-      grd: False
+      grd: True
