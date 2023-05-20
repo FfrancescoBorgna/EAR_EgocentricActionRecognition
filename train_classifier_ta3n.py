@@ -56,7 +56,7 @@ def main():
         logger.info('{} Net\tModality: {}'.format(args.models[m].model, m))
         # notice that here, the first parameter passed is the input dimension
         # In our case it represents the feature dimensionality which is equivalent to 1024 for I3D
-        models[m] = getattr(model_list, args.models[m].model)(num_classes,[5,1024],"TRN",args.models['RGB']["ablation"])
+        models[m] = getattr(model_list, args.models[m].model)(num_classes,[5,1024],args.models['RGB']["temporal-type"],args.models['RGB']["ablation"])
 
     # the models are wrapped into the ActionRecognition task which manages all the training steps
     action_classifier = tasks.TA3N_task("action-classifier", models, args.batch_size,
@@ -183,7 +183,7 @@ def train(action_classifier, train_loader, val_loader, device, num_classes):
         #compute loss on target
         action_classifier.compute_loss(logits_t, target_label, target_label_domain, loss_weight=1, domain="target")
         #backward based on updated losses
-        action_classifier.backward(retain_graph=True)
+        action_classifier.backward()
         #accuracy update
         action_classifier.compute_accuracy(logits_s, source_label)
 

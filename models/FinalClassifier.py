@@ -22,6 +22,7 @@ class Classifier(nn.Module):
         self.temporal_type = temporal_type
         self.ablation_mask = ablation_mask
         self.batch_size = 32 #TODO *************
+        
         #GSF
         n_gsf_out = 512
         self.n_gsf_out = n_gsf_out
@@ -45,27 +46,27 @@ class Classifier(nn.Module):
             self.gsd.add_module('gsd_bn2', nn.BatchNorm1d(256))
             self.gsd.add_module('gsd_relu2', nn.ReLU(True))      
             self.gsd.add_module('gsd_fc3', nn.Linear(256, 2))
-            self.gsd.add_module('gsd_softmax', nn.Softmax(dim=1))
+            self.gsd.add_module('gsd_softmax', nn.LogSoftmax(dim=1))
         
         #Temporal Pooling
         if(temporal_type == "TRN"):
             self.trn = nn.Sequential()
             self.trn.add_module('trn', RelationModuleMultiScale(img_feature_dim=n_gsf_out, num_bottleneck=512, num_frames=n_features[0]))
-        n_grd_out = 256
-        if(ablation_mask["grd"]):
-            self.grd_all = nn.ModuleList()
-            for i in range(self.n_feat[0]-1):
-                grd = nn.Sequential(
-                    nn.Linear(n_gsf_out,n_grd_out),
-                    nn.BatchNorm1d(n_grd_out),
-                    nn.ReLU(True),
-                    nn.Dropout(),
-                    nn.Linear(n_grd_out, n_grd_out//2),
-                    nn.BatchNorm1d(n_grd_out//2),
-                    nn.ReLU(True) ,
-                    nn.Linear(n_grd_out//2, 2),
-                    nn.Softmax(dim=1))
-                self.grd_all += [grd]
+            n_grd_out = 256
+            if(ablation_mask["grd"]):
+                self.grd_all = nn.ModuleList()
+                for i in range(self.n_feat[0]-1):
+                    grd = nn.Sequential(
+                        nn.Linear(n_gsf_out,n_grd_out),
+                        nn.BatchNorm1d(n_grd_out),
+                        nn.ReLU(True),
+                        nn.Dropout(),
+                        nn.Linear(n_grd_out, n_grd_out//2),
+                        nn.BatchNorm1d(n_grd_out//2),
+                        nn.ReLU(True) ,
+                        nn.Linear(n_grd_out//2, 2),
+                        nn.LogSoftmax(dim=1))
+                    self.grd_all += [grd]
         
         #Temporal Domain discriminator
         if(ablation_mask["gtd"]):
@@ -90,6 +91,7 @@ class Classifier(nn.Module):
         
         spatial_domain_out = None
         temporal_domain_out = None
+        grd_outs = None
         class_out = None
 
         x = self.gsf(x)
@@ -98,17 +100,20 @@ class Classifier(nn.Module):
             reverse_features = ReverseLayerF.apply(x,alpha)
             spatial_domain_out = self.gsd(reverse_features.view(-1,5*self.n_gsf_out))
         #temporal aggregation 
-        if(self.temporal_type == "TRN"):
+        if(self.temporal_type == "TRN1"):
             TRN_out = self.trn(x)
             w = torch.zeros([x.shape[0],1,self.n_feat[0]-1]) #the 1 is due to tensor.bmm multiplication
             grd_outs = torch.zeros([x.shape[0],self.n_feat[0]-1,2])
             #compute weights
             for i in range(self.n_feat[0]-1):
                 grd_outs[:,i,:] = self.grd_all[i](ReverseLayerF.apply(TRN_out[:,i,:],alpha))
-                w[:,0,i] = torch.sum(torch.special.entr(grd_outs[:,i,:]),axis=1)
+                w[:,0,i] = torch.sum(1-torch.special.entr(grd_outs[:,i,:]),axis=1)
 
             temporal_aggregation = torch.bmm(w,TRN_out)
             temporal_aggregation = temporal_aggregation.reshape(temporal_aggregation.shape[0],temporal_aggregation.shape[2])
+        elif(self.temporal_type == "TRN"):
+            TRN_out = self.trn(x)
+            temporal_aggregation = (torch.mean(TRN_out,dim=1)).squeeze()
         else:
             temporal_aggregation = torch.mean(x,1)
         #temporal domain

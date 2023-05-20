@@ -116,6 +116,7 @@ class TA3N_task(tasks.Task, ABC):
             fused_logits_class = reduce(lambda x, y: x + y, logits["class"].values())
             self.loss_class.update(self.criterion_class(fused_logits_class, label_class))
 
+            
             loss +=  self.loss_class.val
             if(self.model_args['RGB']["ablation"]["gsd"]):
                 fused_logits_sd = reduce(lambda x, y: x + y, logits["sd"].values())
@@ -125,15 +126,18 @@ class TA3N_task(tasks.Task, ABC):
                 fused_logits_td = reduce(lambda x, y: x + y, logits["td"].values())
                 self.loss_td.update(self.criterion_td(fused_logits_td, label_d))
                 loss +=  self.loss_td.val
-            # TODO
-            if(self.model_args['RGB']["temporal-type"]=="TRN"):
+        
+            if(self.model_args['RGB']["temporal-type"]=="TRN" and self.model_args['RGB']["ablation"]["grd"]):
                 fused_logits_rd = reduce(lambda x, y: x + y, logits["rd"].values())
                 loss_rd = 0;
                 for i in range(0,self.num_clips-1):
                     loss_rd += self.criterion_rd(fused_logits_rd[:,i,:], label_d)
                 # Update the loss value, weighting it by the ratio of the batch size to the total 
                 # batch size (for gradient accumulation)
-                self.loss_rd.update(torch.mean(loss_weight * loss_rd) / (self.total_batch / self.batch_size), self.batch_size)
+                self.loss_rd.update(loss_rd)
+                loss += loss_rd
+                
+            self.loss.update(torch.mean(loss_weight * loss) / (self.total_batch / self.batch_size), self.batch_size)
         else: #target
             fused_logits_sd = reduce(lambda x, y: x + y, logits["sd"].values())
             fused_logits_td = reduce(lambda x, y: x + y, logits["td"].values())
@@ -144,16 +148,13 @@ class TA3N_task(tasks.Task, ABC):
             if(self.model_args['RGB']["ablation"]["gtd"]):
                 self.loss_td.add(self.criterion_td(fused_logits_td, label_d))
                 loss += self.loss_td.val
-            if(self.model_args['RGB']["temporal-type"]=="TRN"):
+            if(self.model_args['RGB']["temporal-type"]=="TRN" and self.model_args['RGB']["ablation"]["grd"]):
                 fused_logits_rd = reduce(lambda x, y: x + y, logits["rd"].values())
-                loss_rd = 0;
+                
                 for i in range(0,self.num_clips-1):
-                    loss_rd += self.criterion_rd(fused_logits_rd[:,i,:], label_d)
-                # Update the loss value, weighting it by the ratio of the batch size to the total 
-                # batch size (for gradient accumulation)
-                self.loss_rd.add(torch.mean(loss_weight * loss_rd) / (self.total_batch / self.batch_size), self.batch_size)
-#†
-            loss = self.loss_sd.val+self.loss_td.val
+                    self.loss_rd.add(self.criterion_rd(fused_logits_rd[:,i,:], label_d))
+                loss += self.loss_rd.val
+
             self.loss.add(torch.mean(loss_weight * loss) / (self.total_batch / self.batch_size), self.batch_size)
 
     
