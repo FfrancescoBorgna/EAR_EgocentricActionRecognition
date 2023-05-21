@@ -85,7 +85,12 @@ def main():
                                                  batch_size=args.batch_size, shuffle=False,
                                                  num_workers=args.dataset.workers, pin_memory=True, drop_last=False)
         loss_train = train(action_classifier, train_loader, val_loader, device, num_classes)
-        torch.save(loss_train, 'train_images/loss_train_avg.pt')
+        #                 loss_train_D1_to_D2_TRN/base_gsd1/0_gtd0/1_grd0/1_lr_sgdMomval_weightDecay
+        loss_file_name = "train_images/loss_train_"+args.dataset.shift.split("-")[0]+"_to_"+args.dataset.shift.split("-")[-1]+"_" \
+                            +args.models.RGB["temporal-type"]+"_gsd_"+str(args.models.RGB.ablation["gsd"])+"_gtd_"+str(args.models.RGB.ablation["gtd"]) \
+                            +"_grd_"+str(args.models.RGB.ablation["grd"])+"_lr_"+str(args.models.RGB.lr)+"_sgdMom_"+str(args.models.RGB.sgd_momentum)+ \
+                                "_weightDecay_"+str(args.models.RGB.weight_decay) +".pt"
+        torch.save(loss_train, loss_file_name)
         
     elif args.action == "validate":
         if args.resume_from is not None:
