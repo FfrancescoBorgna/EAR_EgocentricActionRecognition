@@ -189,7 +189,7 @@ utils/output
 ek_data/
 checkpoints/
 TEST_RESULTS/
-saved_features/
+#saved_features/
 train_images/
 saved_models/
 Experiment_logs/
