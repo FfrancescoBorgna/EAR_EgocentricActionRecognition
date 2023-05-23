@@ -16,7 +16,7 @@ class EpicKitchensDataset(data.Dataset, ABC):
         """
         split: str (D1, D2 or D3)
         modalities: list(str, str, ...)
-        mode: str (train, test/val)
+        mode: str (train, test/val, domainAdapt)
         dataset_conf must contain the following:
             - annotations_path: str
             - stride: int
@@ -44,6 +44,8 @@ class EpicKitchensDataset(data.Dataset, ABC):
             pickle_name = split + "_train.pkl"
         elif kwargs.get('save', None) is not None:
             pickle_name = split + "_" + kwargs["save"] + ".pkl"
+        elif self.mode == "domainAdapt":
+             pickle_name = split + "_test.pkl"
         else:
             pickle_name = split + "_test.pkl"
 
