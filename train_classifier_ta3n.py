@@ -48,7 +48,7 @@ def main():
     num_classes, valid_labels, source_domain, target_domain = utils.utils.get_domains_and_labels(args)
     # device where everything is run
     #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    if(args.gpus == "mps:0"):
+    if(args.gpus == "mps"):
         device = torch.device("mps:0" if torch.backends.mps.is_available() else "cpu")
     elif(args.gpus == "cuda"):
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
