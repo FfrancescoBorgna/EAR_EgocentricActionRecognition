@@ -5,7 +5,7 @@ from modules.TRNmodule import RelationModuleMultiScale
 from scipy.stats import entropy 
 
 class Classifier(nn.Module):
-    def __init__(self, num_class, n_features,temporal_type,ablation_mask):
+    def __init__(self, num_class, n_features,temporal_type,ablation_mask,device):
         super().__init__()
         """
         n_features: [0]: 5
@@ -22,7 +22,7 @@ class Classifier(nn.Module):
         self.temporal_type = temporal_type
         self.ablation_mask = ablation_mask
         self.batch_size = 32 #TODO *************
-        
+        self.device = device
         #GSF
         n_gsf_out = 512
         self.n_gsf_out = n_gsf_out
@@ -102,11 +102,12 @@ class Classifier(nn.Module):
         #temporal aggregation 
         if(self.temporal_type == "TRN"):
             TRN_out = self.trn(x)
-            grd_outs = torch.zeros([x.shape[0],self.n_feat[0]-1,2])
-           
+            grd_outs = torch.zeros([x.shape[0],self.n_feat[0]-1,2]).to(self.device)
+            
             for i in range(0,self.n_feat[0]-1):
                 grd_outs[:,i,:] = self.grd_all[i](ReverseLayerF.apply(TRN_out[:,i,:],alpha))
             #Calcolo Entropia e Attention Weights
+        
             softmax = nn.Softmax(dim=2)
             logsoftmax = nn.LogSoftmax(dim=2)
             entropy = torch.sum(-softmax(grd_outs) * logsoftmax(grd_outs), 2)

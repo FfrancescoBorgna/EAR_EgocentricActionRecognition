@@ -47,8 +47,13 @@ def main():
     # this will output the domain conversion (D1 -> 8, et cetera) and the label list
     num_classes, valid_labels, source_domain, target_domain = utils.utils.get_domains_and_labels(args)
     # device where everything is run
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+    #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if(args.gpus == "mps:0"):
+        device = torch.device("mps:0" if torch.backends.mps.is_available() else "cpu")
+    elif(args.gpus == "cuda:0"):
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    else: 
+        device = torch.device("cpu")
     # these dictionaries are for more multi-modal training/testing, each key is a modality used
     models = {}
     logger.info("Instantiating models per modality")
@@ -56,7 +61,7 @@ def main():
         logger.info('{} Net\tModality: {}'.format(args.models[m].model, m))
         # notice that here, the first parameter passed is the input dimension
         # In our case it represents the feature dimensionality which is equivalent to 1024 for I3D
-        models[m] = getattr(model_list, args.models[m].model)(num_classes,[5,1024],args.models['RGB']["temporal-type"],args.models['RGB']["ablation"])
+        models[m] = getattr(model_list, args.models[m].model)(num_classes,[5,1024],args.models['RGB']["temporal-type"],args.models['RGB']["ablation"],device)
 
     # the models are wrapped into the ActionRecognition task which manages all the training steps
     action_classifier = tasks.TA3N_task("action-classifier", models, args.batch_size,
