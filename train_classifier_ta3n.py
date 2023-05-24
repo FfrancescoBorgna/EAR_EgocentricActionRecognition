@@ -50,8 +50,8 @@ def main():
     #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if(args.gpus == "mps:0"):
         device = torch.device("mps:0" if torch.backends.mps.is_available() else "cpu")
-    elif(args.gpus == "cuda:0"):
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    elif(args.gpus == "cuda"):
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     else: 
         device = torch.device("cpu")
     # these dictionaries are for more multi-modal training/testing, each key is a modality used
