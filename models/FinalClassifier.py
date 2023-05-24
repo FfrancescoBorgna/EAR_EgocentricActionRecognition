@@ -103,6 +103,7 @@ class Classifier(nn.Module):
         if(self.temporal_type == "TRN"):
             TRN_out = self.trn(x)
             grd_outs = torch.zeros([x.shape[0],self.n_feat[0]-1,2])
+           
             for i in range(0,self.n_feat[0]-1):
                 grd_outs[:,i,:] = self.grd_all[i](ReverseLayerF.apply(TRN_out[:,i,:],alpha))
             #Calcolo Entropia e Attention Weights
@@ -122,6 +123,7 @@ class Classifier(nn.Module):
         
         class_out = self.gy(temporal_aggregation)
 
+        
         return spatial_domain_out,temporal_domain_out, class_out,grd_outs
       
 class ReverseLayerF(Function):
