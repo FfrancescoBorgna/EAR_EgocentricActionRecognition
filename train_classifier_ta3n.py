@@ -28,9 +28,9 @@ def init_operations():
     logger.info("Running with parameters: " + pformat_dict(args, indent=1))
 
     # this is needed for multi-GPUs systems where you just want to use a predefined set of GPUs
-    if args.gpus is not None:
-        logger.debug('Using only these GPUs: {}'.format(args.gpus))
-        os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpus)
+    #if args.gpus is not None:
+    #    logger.debug('Using only these GPUs: {}'.format(args.gpus))
+    #    os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpus)
 
     # wanbd logging configuration
     if args.wandb_name is not None:
