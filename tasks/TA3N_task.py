@@ -259,6 +259,6 @@ class TA3N_task(tasks.Task, ABC):
             losses[1] = torch.mean(self.loss_sd.avg)
         if(self.model_args['RGB']['ablation']['gtd']):    
             losses[2] = torch.mean(self.loss_td.avg)
-        if(self.model_args['RGB']['ablation']['gtd']):    
+        if(self.model_args['RGB']['ablation']['grd']):    
             losses[3] = torch.mean(self.loss_rd.avg)
         return losses
