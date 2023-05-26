@@ -37,16 +37,17 @@ class Classifier(nn.Module):
 
         #Spatial Domain Discriminator
         if(ablation_mask["gsd"]):
+            n_gsd = 256;
             self.gsd = nn.Sequential()
-            self.gsd.add_module('gsd_fc1', nn.Linear(n_gsf_out*n_features[0], 256))
-            self.gsd.add_module('gsd_bn1', nn.BatchNorm1d(256))
+            self.gsd.add_module('gsd_fc1', nn.Linear(n_gsf_out*n_features[0], n_gsd))
+            self.gsd.add_module('gsd_bn1', nn.BatchNorm1d(n_gsd))
             self.gsd.add_module('gsd_relu1', nn.ReLU(True))
             self.gsd.add_module('gsd_drop1', nn.Dropout())
-            self.gsd.add_module('gsd_fc2', nn.Linear(256, 256))
-            self.gsd.add_module('gsd_bn2', nn.BatchNorm1d(256))
+            self.gsd.add_module('gsd_fc2', nn.Linear(n_gsd, n_gsd//2))
+            self.gsd.add_module('gsd_bn2', nn.BatchNorm1d( n_gsd//2))
             self.gsd.add_module('gsd_relu2', nn.ReLU(True))      
-            self.gsd.add_module('gsd_fc3', nn.Linear(256, 2))
-            self.gsd.add_module('gsd_softmax', nn.LogSoftmax(dim=1))
+            self.gsd.add_module('gsd_fc3', nn.Linear( n_gsd//2, 2))
+            self.gsd.add_module('gsd_softmax', nn.Softmax(dim=1))
         
         #Temporal Pooling
         if(temporal_type == "TRN"):
@@ -65,23 +66,24 @@ class Classifier(nn.Module):
                         nn.BatchNorm1d(n_grd_out//2),
                         nn.ReLU(True) ,
                         nn.Linear(n_grd_out//2, 2),
-                        nn.LogSoftmax(dim=1))
+                        nn.Softmax(dim=1))
                     self.grd_all += [grd]
         else:
             #self.avg_pool = nn.AvgPool2d();
             aaaaaa = 1
         #Temporal Domain discriminator
         if(ablation_mask["gtd"]):
+            n_gtd = 256
             self.gtd = nn.Sequential()
-            self.gtd.add_module('gtd_fc1',     nn.Linear(n_gsf_out, 512))
-            self.gtd.add_module('gtd_bn1',     nn.BatchNorm1d(512))
+            self.gtd.add_module('gtd_fc1',     nn.Linear(n_gsf_out, n_gtd))
+            self.gtd.add_module('gtd_bn1',     nn.BatchNorm1d(n_gtd))
             self.gtd.add_module('gtd_relu1',   nn.ReLU(True))
             self.gtd.add_module('gtd_drop1',   nn.Dropout())
-            self.gtd.add_module('gtd_fc2',     nn.Linear(512, 256))
-            self.gtd.add_module('gtd_bn2',     nn.BatchNorm1d(256))
+            self.gtd.add_module('gtd_fc2',     nn.Linear(n_gtd, n_gtd//2))
+            self.gtd.add_module('gtd_bn2',     nn.BatchNorm1d(n_gtd//2))
             self.gtd.add_module('gtd_relu2',   nn.ReLU(True))      
-            self.gtd.add_module('gtd_fc3',     nn.Linear(256, 2))
-            self.gtd.add_module('gtd_softmax', nn.LogSoftmax(dim=1))
+            self.gtd.add_module('gtd_fc3',     nn.Linear(n_gtd//2, 2))
+            self.gtd.add_module('gtd_softmax', nn.Softmax(dim=1))
         
         #Gy
         self.gy = nn.Sequential()
