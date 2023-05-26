@@ -88,8 +88,8 @@ def main():
                                                                      'domainAdapt', args.dataset, None, None, None,
                                                                      None, load_feat=True),
                                                  batch_size=args.batch_size, shuffle=False,
-                                                 num_workers=args.dataset.workers, pin_memory=True, drop_last=False)
-        loss_train = train(action_classifier, train_loader, val_loader, device, num_classes,persistent_workers=True)
+                                                 num_workers=args.dataset.workers, pin_memory=True, drop_last=False,persistent_workers=True)
+        loss_train = train(action_classifier, train_loader, val_loader, device, num_classes)
         #                 loss_train_D1_to_D2_TRN/base_gsd1/0_gtd0/1_grd0/1_lr_sgdMomval_weightDecay
         loss_file_name = "train_images/loss_train_"+args.dataset.shift.split("-")[0]+"_to_"+args.dataset.shift.split("-")[-1]+"_" \
                             +args.models.RGB["temporal-type"]+"_gsd_"+str(args.models.RGB.ablation["gsd"])+"_gtd_"+str(args.models.RGB.ablation["gtd"]) \
