@@ -67,7 +67,9 @@ class Classifier(nn.Module):
                         nn.Linear(n_grd_out//2, 2),
                         nn.LogSoftmax(dim=1))
                     self.grd_all += [grd]
-        
+        else:
+            #self.avg_pool = nn.AvgPool2d();
+            aaaaaa = 1
         #Temporal Domain discriminator
         if(ablation_mask["gtd"]):
             self.gtd = nn.Sequential()
@@ -84,7 +86,7 @@ class Classifier(nn.Module):
         #Gy
         self.gy = nn.Sequential()
         self.gy.add_module('c_fc1', nn.Linear(n_gsf_out, num_class))
-        self.gy.add_module('c_softmax', nn.LogSoftmax(dim=1))
+        self.gy.add_module('c_softmax', nn.Softmax(dim=1))
 
 
     def forward(self, x,alpha = 1):

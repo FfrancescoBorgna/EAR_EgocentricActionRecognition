@@ -14,7 +14,7 @@ class TA3N_task(tasks.Task, ABC):
     
     def __init__(self, name: str, task_models: Dict[str, torch.nn.Module], batch_size: int, 
                  total_batch: int, models_dir: str, num_classes: int,
-                 num_clips: int, model_args: Dict[str, float], args, **kwargs) -> None:
+                 num_clips: int, model_args: Dict[str, float], args,device, **kwargs) -> None:
         """Create an instance of the action recognition model.
 
         Parameters
@@ -52,6 +52,8 @@ class TA3N_task(tasks.Task, ABC):
         self.loss_rd = utils.AverageMeter()
         
         self.num_clips = num_clips
+        self.batch_size = batch_size
+        self.device = device
 
         # Use the cross entropy loss as the default criterion for the classification task
         self.criterion_class = torch.nn.CrossEntropyLoss(weight=None, size_average=None, ignore_index=-100,
@@ -134,6 +136,10 @@ class TA3N_task(tasks.Task, ABC):
 
                 domain_entropy = torch.sum(-softmax(fused_logits_td) * logsoftmax(fused_logits_td), 1)
                 
+                class_entropy = torch.sum(-softmax(fused_logits_class) * logsoftmax(fused_logits_class), 1)    
+            
+                loss_ae = (1+domain_entropy)*class_entropy
+                loss+= loss_ae;
         
             if(self.model_args['RGB']["temporal-type"]=="TRN" and self.model_args['RGB']["ablation"]["grd"]):
                 fused_logits_rd = reduce(lambda x, y: x + y, logits["rd"].values())
@@ -145,16 +151,13 @@ class TA3N_task(tasks.Task, ABC):
                 self.loss_rd.update(loss_rd)
                 loss += loss_rd
             
-            class_entropy = torch.sum(-softmax(fused_logits_class) * logsoftmax(fused_logits_class), 1)    
             
-            loss_ae = (1+domain_entropy)*class_entropy
-            loss+= loss_ae;
             self.loss.update(torch.mean(loss_weight * loss) / (self.total_batch / self.batch_size), self.batch_size)
         else: #target
             fused_logits_class = reduce(lambda x, y: x + y, logits["class"].values())
             fused_logits_sd = reduce(lambda x, y: x + y, logits["sd"].values())
             fused_logits_td = reduce(lambda x, y: x + y, logits["td"].values())
-            loss = 0
+            loss = torch.zeros([32]).to(self.device)
             if(self.model_args['RGB']["ablation"]["gsd"]):
                 self.loss_sd.add(self.criterion_sd(fused_logits_sd, label_d))
                 loss += self.loss_sd.val
@@ -162,6 +165,11 @@ class TA3N_task(tasks.Task, ABC):
                 self.loss_td.add(self.criterion_td(fused_logits_td, label_d))
                 loss += self.loss_td.val
                 domain_entropy = torch.sum(-softmax(fused_logits_td) * logsoftmax(fused_logits_td), 1)
+
+                #Loss ae
+                class_entropy = torch.sum(-softmax(fused_logits_class) * logsoftmax(fused_logits_class), 1)    
+                loss_ae = (1+domain_entropy)*class_entropy
+                loss+= loss_ae;
             if(self.model_args['RGB']["temporal-type"]=="TRN" and self.model_args['RGB']["ablation"]["grd"]):
                 fused_logits_rd = reduce(lambda x, y: x + y, logits["rd"].values())
                 
@@ -170,10 +178,7 @@ class TA3N_task(tasks.Task, ABC):
                 loss += self.loss_rd.val
             
             
-            class_entropy = torch.sum(-softmax(fused_logits_class) * logsoftmax(fused_logits_class), 1)    
             
-            loss_ae = (1+domain_entropy)*class_entropy
-            loss+= loss_ae;
             self.loss.add(torch.mean(loss_weight * loss) / (self.total_batch / self.batch_size), self.batch_size)
 
     
