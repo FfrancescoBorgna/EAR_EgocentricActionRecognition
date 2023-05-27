@@ -114,9 +114,7 @@ class TA3N_task(tasks.Task, ABC):
             weight of the classification loss, by default 1.0
         """
         domain_entropy = 0; # ablation['td'] = False
-        softmax = nn.Softmax(dim=1)
-        logsoftmax = nn.LogSoftmax(dim=1)
-
+        eps = 1e-7
         if(domain == "source"): #source
             loss = 0
             #Compute Class loss
@@ -133,8 +131,8 @@ class TA3N_task(tasks.Task, ABC):
                 self.loss_td.update(self.criterion_td(fused_logits_td, label_d))
                 loss +=  0.5*self.loss_td.val
 
-                domain_entropy = torch.sum(-(fused_logits_td) * torch.log(fused_logits_td), 1).nan_to_num()
-                class_entropy = torch.sum(-(fused_logits_class) * torch.log(fused_logits_class), 1).nan_to_num()    
+                domain_entropy = torch.sum(-(fused_logits_td) * torch.log(fused_logits_td+eps), 1)
+                class_entropy = torch.sum(-(fused_logits_class) * torch.log(fused_logits_class+eps), 1) 
             
                 loss_ae = (1+domain_entropy)*class_entropy
                 loss+= 0.5*loss_ae;
@@ -164,8 +162,8 @@ class TA3N_task(tasks.Task, ABC):
                 loss += 0.5*self.loss_td.val
 
                 #Loss ae
-                domain_entropy = torch.sum(-(fused_logits_td) * torch.log(fused_logits_td), 1).nan_to_num()
-                class_entropy = torch.sum(-(fused_logits_class) * torch.log(fused_logits_class), 1).nan_to_num()    
+                domain_entropy = torch.sum(-(fused_logits_td) * torch.log(fused_logits_td+eps), 1)
+                class_entropy = torch.sum(-(fused_logits_class) * torch.log(fused_logits_class+eps), 1)   
                 loss_ae = (1+domain_entropy)*class_entropy
                 loss+= 0.5*loss_ae;
             

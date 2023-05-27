@@ -13,6 +13,7 @@ import os
 import models as model_list
 import tasks
 import wandb
+from torch import autograd
 
 # global variables among training functions
 training_iterations = 0
@@ -125,7 +126,6 @@ def train(action_classifier, train_loader, val_loader, device, num_classes):
     action_classifier.train(True)
     action_classifier.zero_grad()
     iteration = action_classifier.current_iter * (args.total_batch // args.batch_size)
-    min_dataset_size = min(len(data_loader_target._dataset), len(data_loader_source._dataset))
 
     loss_train = torch.zeros([int(training_iterations / (args.total_batch // args.batch_size)),4]) #
     # the batch size should be total_batch but batch accumulation is done with batch size = batch_size.
@@ -191,6 +191,8 @@ def train(action_classifier, train_loader, val_loader, device, num_classes):
         for m in modalities:
             data_t[m] = target_data[m].to(device)
         
+
+       
         #forward on source
         logits_s = action_classifier.forward(data_s)
         #compute loss on source
@@ -203,7 +205,6 @@ def train(action_classifier, train_loader, val_loader, device, num_classes):
         action_classifier.backward()
         #accuracy update
         action_classifier.compute_accuracy(logits_s, source_label)
-
         # update weights and zero gradients if total_batch samples are passed
         if gradient_accumulation_step:
             logger.info("[%d/%d]\tlast Verb loss: %.4f\tMean verb loss: %.4f\tAcc@1: %.2f%%\tAccMean@1: %.2f%%" %
@@ -211,7 +212,6 @@ def train(action_classifier, train_loader, val_loader, device, num_classes):
                          action_classifier.accuracy.val[1], action_classifier.accuracy.avg[1]))
             #save loss
             loss_train[i//4] = action_classifier.get_losses()
-
             action_classifier.check_grad()
             action_classifier.step()
             action_classifier.zero_grad()
