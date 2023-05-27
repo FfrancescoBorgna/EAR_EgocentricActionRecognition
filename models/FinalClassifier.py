@@ -106,20 +106,27 @@ class Classifier(nn.Module):
         #temporal aggregation 
         if(self.temporal_type == "TRN"):
             TRN_out = self.trn(x)
-            grd_outs = torch.zeros([x.shape[0],self.n_feat[0]-1,2]).to(self.device)
-            
-            for i in range(0,self.n_feat[0]-1):
-                grd_outs[:,i,:] = self.grd_all[i](ReverseLayerF.apply(TRN_out[:,i,:],alpha))
-            #Calcolo Entropia e Attention Weights
-        
-            softmax = nn.Softmax(dim=2)
-            logsoftmax = nn.LogSoftmax(dim=2)
-            entropy = torch.sum(-softmax(grd_outs) * logsoftmax(grd_outs), 2)
-            weights = 1-entropy
-            weights = weights.unsqueeze(2).repeat(1,1,TRN_out.shape[2]) #[32,4] -> [32,4,#feat] on dim=2 repeate the element of the second dim
+            if(self.ablation_mask["grd"]):
+                grd_outs = torch.zeros([x.shape[0],self.n_feat[0]-1,2]).to(self.device)
+
+                for i in range(0,self.n_feat[0]-1):
+                    grd_outs[:,i,:] = self.grd_all[i](ReverseLayerF.apply(TRN_out[:,i,:],alpha))
+                
+                if(self.ablation_mask["domainA"]):
+                #Calcolo Entropia e Attention Weights
+
+                    softmax = nn.Softmax(dim=2)
+                    logsoftmax = nn.LogSoftmax(dim=2)
+                    entropy = torch.sum(-softmax(grd_outs) * logsoftmax(grd_outs), 2)
+                    weights = 1-entropy
+                    weights = weights.unsqueeze(2).repeat(1,1,TRN_out.shape[2]) #[32,4] -> [32,4,#feat] on dim=2 repeate the element of the second dim
 
 
-            temporal_aggregation = torch.sum((weights+1)*TRN_out,dim=1)
+                    temporal_aggregation = torch.sum((weights+1)*TRN_out,dim=1)
+                else:
+                    temporal_aggregation = torch.mean(TRN_out,1)
+            else:
+                temporal_aggregation = torch.mean(TRN_out,1)
         else:
             temporal_aggregation = torch.mean(x,1)
         #temporal domain
