@@ -127,17 +127,17 @@ class TA3N_task(tasks.Task, ABC):
             if(self.model_args['RGB']["ablation"]["gsd"]):
                 fused_logits_sd = reduce(lambda x, y: x + y, logits["sd"].values())
                 self.loss_sd.update(self.criterion_sd(fused_logits_sd, label_d))
-                loss +=  self.loss_sd.val
+                loss +=  0.5*self.loss_sd.val
             if(self.model_args['RGB']["ablation"]["gtd"]):    
                 fused_logits_td = reduce(lambda x, y: x + y, logits["td"].values())
                 self.loss_td.update(self.criterion_td(fused_logits_td, label_d))
-                loss +=  self.loss_td.val
+                loss +=  0.5*self.loss_td.val
 
-                domain_entropy = torch.sum(-softmax(fused_logits_td) * logsoftmax(fused_logits_td), 1)
-                class_entropy = torch.sum(-softmax(fused_logits_class) * logsoftmax(fused_logits_class), 1)    
+                domain_entropy = torch.sum(-(fused_logits_td) * torch.log(fused_logits_td), 1).nan_to_num()
+                class_entropy = torch.sum(-(fused_logits_class) * torch.log(fused_logits_class), 1).nan_to_num()    
             
                 loss_ae = (1+domain_entropy)*class_entropy
-                #loss+= loss_ae;
+                loss+= 0.5*loss_ae;
         
             if(self.model_args['RGB']["temporal-type"]=="TRN" and self.model_args['RGB']["ablation"]["grd"]):
                 fused_logits_rd = reduce(lambda x, y: x + y, logits["rd"].values())
@@ -147,7 +147,7 @@ class TA3N_task(tasks.Task, ABC):
                 # Update the loss value, weighting it by the ratio of the batch size to the total 
                 # batch size (for gradient accumulation)
                 self.loss_rd.update(loss_rd)
-                loss += loss_rd
+                loss += 0.5*loss_rd
             
             
             self.loss.update(torch.mean(loss_weight * loss) / (self.total_batch / self.batch_size), self.batch_size)
@@ -158,23 +158,23 @@ class TA3N_task(tasks.Task, ABC):
             loss = torch.zeros([32]).to(self.device)
             if(self.model_args['RGB']["ablation"]["gsd"]):
                 self.loss_sd.add(self.criterion_sd(fused_logits_sd, label_d))
-                loss += self.loss_sd.val
+                loss += 0.5*self.loss_sd.val
             if(self.model_args['RGB']["ablation"]["gtd"]):
                 self.loss_td.add(self.criterion_td(fused_logits_td, label_d))
-                loss += self.loss_td.val
+                loss += 0.5*self.loss_td.val
 
                 #Loss ae
-                domain_entropy = torch.sum(-softmax(fused_logits_td) * logsoftmax(fused_logits_td), 1)
-                class_entropy = torch.sum(-softmax(fused_logits_class) * logsoftmax(fused_logits_class), 1)    
+                domain_entropy = torch.sum(-(fused_logits_td) * torch.log(fused_logits_td), 1).nan_to_num()
+                class_entropy = torch.sum(-(fused_logits_class) * torch.log(fused_logits_class), 1).nan_to_num()    
                 loss_ae = (1+domain_entropy)*class_entropy
-                #loss+= loss_ae;
+                loss+= 0.5*loss_ae;
             
             if(self.model_args['RGB']["temporal-type"]=="TRN" and self.model_args['RGB']["ablation"]["grd"]):
                 fused_logits_rd = reduce(lambda x, y: x + y, logits["rd"].values())
                 
                 for i in range(0,self.num_clips-1):
                     self.loss_rd.add(self.criterion_rd(fused_logits_rd[:,i,:], label_d))
-                loss += self.loss_rd.val
+                loss += 0.5*self.loss_rd.val
             
             
             

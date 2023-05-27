@@ -149,11 +149,8 @@ def train(action_classifier, train_loader, val_loader, device, num_classes):
         try:
             source_data, source_label = next(data_loader_source)
             source_label_domain = 0*torch.ones([args.batch_size], dtype=int)
-
-            target_data, target_label = next(data_loader_target)
-            target_label_domain = 1*torch.ones([args.batch_size], dtype = int)
-            
-            if (i%(min_dataset_size//args.batch_size))==0:
+    
+            if (i%(len(data_loader_source._dataset)//args.batch_size))==0:
                 #check if last batch of the smallest dataloader is smaller than batch_size
                 raise StopIteration
         except StopIteration:
@@ -161,14 +158,24 @@ def train(action_classifier, train_loader, val_loader, device, num_classes):
             data_loader_source = iter(train_loader) # TODO forse conviene separare i controlli sulla fine dei dataloader?
             source_data, source_label = next(data_loader_source)
             source_label_domain = 0*torch.ones([args.batch_size], dtype=int)
+
+        try:
+            target_data, target_label = next(data_loader_target)
+            target_label_domain = 1*torch.ones([args.batch_size], dtype = int)
+            
+            if (i%(len(data_loader_target._dataset)//args.batch_size))==0:
+                #check if last batch of the smallest dataloader is smaller than batch_size
+                raise StopIteration
+        except StopIteration:
             #reset target dataloader
             data_loader_target = iter(val_loader)
             target_data, target_label = next(data_loader_target)
             target_label_domain = 1*torch.ones([args.batch_size], dtype = int)
         end_t = datetime.now()
 
-        logger.info(f"Iteration {i}/{training_iterations} batch retrieved! Elapsed time = "
-                    f"{(end_t - start_t).total_seconds() // 60} m {(end_t - start_t).total_seconds() % 60} s")
+        #TODO uncomment
+        #logger.info(f"Iteration {i}/{training_iterations} batch retrieved! Elapsed time = "
+        #            f"{(end_t - start_t).total_seconds() // 60} m {(end_t - start_t).total_seconds() % 60} s")
 
         ''' Action recognition'''
         "******** We start by using the source ****************"

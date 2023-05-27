@@ -29,11 +29,11 @@ class Classifier(nn.Module):
         self.gsf = nn.Sequential()
         self.gsf.add_module('gsf_fc1', nn.Linear(self.n_feat[1], n_gsf_out))
         self.gsf.add_module('gsf_bn1', nn.BatchNorm1d(n_features[0]))
-        self.gsf.add_module('gsf_relu1', nn.ReLU(True))
+        self.gsf.add_module('gsf_relu1', nn.LeakyReLU(0.1))
         self.gsf.add_module('gsf_drop1', nn.Dropout())
         self.gsf.add_module('gsf_fc2', nn.Linear(n_gsf_out, n_gsf_out))
         self.gsf.add_module('gsf_bn2', nn.BatchNorm1d(n_features[0]))
-        self.gsf.add_module('gsf_relu2', nn.ReLU(True))
+        self.gsf.add_module('gsf_relu2', nn.LeakyReLU(0.1))
 
         #Spatial Domain Discriminator
         if(ablation_mask["gsd"]):
@@ -41,11 +41,11 @@ class Classifier(nn.Module):
             self.gsd = nn.Sequential()
             self.gsd.add_module('gsd_fc1', nn.Linear(n_gsf_out*n_features[0], n_gsd))
             self.gsd.add_module('gsd_bn1', nn.BatchNorm1d(n_gsd))
-            self.gsd.add_module('gsd_relu1', nn.ReLU(True))
+            self.gsd.add_module('gsd_relu1', nn.LeakyReLU(0.1))
             self.gsd.add_module('gsd_drop1', nn.Dropout())
             self.gsd.add_module('gsd_fc2', nn.Linear(n_gsd, n_gsd//2))
             self.gsd.add_module('gsd_bn2', nn.BatchNorm1d( n_gsd//2))
-            self.gsd.add_module('gsd_relu2', nn.ReLU(True))      
+            self.gsd.add_module('gsd_relu2', nn.LeakyReLU(0.1))      
             self.gsd.add_module('gsd_fc3', nn.Linear( n_gsd//2, 2))
             self.gsd.add_module('gsd_softmax', nn.Softmax(dim=1))
         
@@ -68,20 +68,18 @@ class Classifier(nn.Module):
                         nn.Linear(n_grd_out//2, 2),
                         nn.Softmax(dim=1))
                     self.grd_all += [grd]
-        else:
-            #self.avg_pool = nn.AvgPool2d();
-            aaaaaa = 1
+ 
         #Temporal Domain discriminator
         if(ablation_mask["gtd"]):
-            n_gtd = 256
+            n_gtd = 512
             self.gtd = nn.Sequential()
             self.gtd.add_module('gtd_fc1',     nn.Linear(n_gsf_out, n_gtd))
             self.gtd.add_module('gtd_bn1',     nn.BatchNorm1d(n_gtd))
-            self.gtd.add_module('gtd_relu1',   nn.ReLU(True))
+            self.gtd.add_module('gtd_relu1',   nn.LeakyReLU(0.1))
             self.gtd.add_module('gtd_drop1',   nn.Dropout())
             self.gtd.add_module('gtd_fc2',     nn.Linear(n_gtd, n_gtd//2))
             self.gtd.add_module('gtd_bn2',     nn.BatchNorm1d(n_gtd//2))
-            self.gtd.add_module('gtd_relu2',   nn.ReLU(True))      
+            self.gtd.add_module('gtd_relu2',   nn.LeakyReLU(0.1))      
             self.gtd.add_module('gtd_fc3',     nn.Linear(n_gtd//2, 2))
             self.gtd.add_module('gtd_softmax', nn.Softmax(dim=1))
         
@@ -117,7 +115,7 @@ class Classifier(nn.Module):
 
                     softmax = nn.Softmax(dim=2)
                     logsoftmax = nn.LogSoftmax(dim=2)
-                    entropy = torch.sum(-softmax(grd_outs) * logsoftmax(grd_outs), 2)
+                    entropy = torch.sum(-(grd_outs) * torch.log(grd_outs), 2).nan_to_num()
                     weights = 1-entropy
                     weights = weights.unsqueeze(2).repeat(1,1,TRN_out.shape[2]) #[32,4] -> [32,4,#feat] on dim=2 repeate the element of the second dim
 

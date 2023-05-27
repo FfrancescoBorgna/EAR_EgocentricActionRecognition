@@ -48,11 +48,11 @@ models:
     kwargs: {}
     lr_steps: 1000
     lr: 1e-2
-    sgd_momentum: 0.9
-    weight_decay: 1e-4
+    sgd_momentum: 0.8
+    weight_decay: 1e-7
     temporal-type: TRN
     ablation: 
-      gsd: False
+      gsd: True
       gtd: True
-      grd: False
-      domainA: False
+      grd: True
+      domainA: True

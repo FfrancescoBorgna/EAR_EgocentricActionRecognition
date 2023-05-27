@@ -45,7 +45,7 @@ class EpicKitchensDataset(data.Dataset, ABC):
         elif kwargs.get('save', None) is not None:
             pickle_name = split + "_" + kwargs["save"] + ".pkl"
         elif self.mode == "domainAdapt":
-             pickle_name = split + "_test.pkl"
+             pickle_name = split + "_train.pkl"
         else:
             pickle_name = split + "_test.pkl"
 

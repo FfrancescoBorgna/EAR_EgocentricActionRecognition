@@ -12,9 +12,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["name=secTentativo",
-                    "config=configs/default.yaml" ,
-                    "dataset.shift=D1-D2 ",
+            "args": ["config=configs/default.yaml" ,
                     "dataset.RGB.data_path=ek_data/frames/",
                     "action=train"
                 ]
