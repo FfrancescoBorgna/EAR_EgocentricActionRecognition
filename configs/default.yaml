@@ -51,9 +51,9 @@ models:
     gamma: 0
     sgd_momentum: 0.8
     weight_decay: 1e-7
-    temporal-type: TRN
+    temporal-type: mean
     ablation: 
-      gsd: True
-      gtd: True
-      grd: True
-      domainA: True
+      gsd: False
+      gtd: False
+      grd: False
+      domainA: False
