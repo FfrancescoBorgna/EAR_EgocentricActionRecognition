@@ -3,26 +3,6 @@ import torch.nn as nn
 import numpy as np
 from math import ceil
 
-class RelationModule(torch.nn.Module):
-    # this is the naive implementation of the n-frame relation module, as num_frames == num_frames_relation
-    def __init__(self, img_feature_dim, num_bottleneck, num_frames):
-        super(RelationModule, self).__init__()
-        self.num_frames = num_frames
-        self.img_feature_dim = img_feature_dim
-        self.num_bottleneck = num_bottleneck
-        self.classifier = self.fc_fusion()
-    def fc_fusion(self):
-        # naive concatenate
-        classifier = nn.Sequential(
-                nn.ReLU(),
-                nn.Linear(self.num_frames * self.img_feature_dim, self.num_bottleneck),
-                nn.ReLU(),
-                )
-        return classifier
-    def forward(self, input):
-        input = input.view(input.size(0), self.num_frames*self.img_feature_dim)
-        input = self.classifier(input)
-        return input
 
 class RelationModuleMultiScale(torch.nn.Module):
     # Temporal Relation module in multiply scale, suming over [2-frame relation, 3-frame relation, ..., n-frame relation]

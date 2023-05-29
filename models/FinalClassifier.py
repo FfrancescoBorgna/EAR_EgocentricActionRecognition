@@ -52,7 +52,7 @@ class Classifier(nn.Module):
         #Temporal Pooling
         if(temporal_type == "TRN"):
             self.trn = nn.Sequential()
-            self.trn.add_module('trn', RelationModuleMultiScale(img_feature_dim=n_gsf_out, num_bottleneck=512, num_frames=n_features[0]))
+            self.trn.add_module('trn', RelationModuleMultiScale(img_feature_dim=n_gsf_out, num_bottleneck=n_gsf_out, num_frames=n_features[0]))
             n_grd_out = 256
             if(ablation_mask["grd"]):
                 self.grd_all = nn.ModuleList()
@@ -68,8 +68,8 @@ class Classifier(nn.Module):
                         nn.Linear(n_grd_out//2, 2),
                         nn.Softmax(dim=1))
                     self.grd_all += [grd]
-        else:
-            self.AvgPool = nn.AdaptiveAvgPool2d((1,512))
+        
+        self.AvgPool = nn.AdaptiveAvgPool2d((1,n_gsf_out))
         #Temporal Domain discriminator
         if(ablation_mask["gtd"]):
             n_gtd = 512
@@ -124,9 +124,10 @@ class Classifier(nn.Module):
 
                     temporal_aggregation = torch.sum((weights+1)*TRN_out,dim=1)
                 else:
-                    temporal_aggregation = torch.mean(TRN_out,1)
+                    temporal_aggregation = self.AvgPool(TRN_out).reshape(TRN_out.shape[0],TRN_out.shape[2])
             else:
-                temporal_aggregation = torch.mean(TRN_out,1)
+                #temporal_aggregation = self.AvgPool(TRN_out).reshape(TRN_out.shape[0],TRN_out.shape[2])
+                temporal_aggregation = torch.sum(TRN_out,dim=1)
         else:
             temporal_aggregation =self.AvgPool(x).reshape(x.shape[0],x.shape[2])
         #temporal domain

@@ -28,7 +28,7 @@ test:
 
 dataset:
   annotations_path: train_val # path for the annotations data
-  shift: D1-D1 # shifts of the dataset
+  shift: D1-D2 # shifts of the dataset
   workers: 4 # number of workers for the dataloader 
   persistentWorkers: True
   stride: 2 # stride in case of dense sampling
@@ -49,7 +49,7 @@ models:
     lr_steps: 2000
     lr: 1e-2
     gamma: 0
-    sgd_momentum: 0.8
+    sgd_momentum: 0.9
     weight_decay: 1e-7
     temporal-type: TRN
     ablation: 
