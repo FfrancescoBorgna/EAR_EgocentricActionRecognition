@@ -68,7 +68,8 @@ class Classifier(nn.Module):
                         nn.Linear(n_grd_out//2, 2),
                         nn.Softmax(dim=1))
                     self.grd_all += [grd]
- 
+        else:
+            self.AvgPool = nn.AdaptiveAvgPool2d((1,512))
         #Temporal Domain discriminator
         if(ablation_mask["gtd"]):
             n_gtd = 512
@@ -127,7 +128,7 @@ class Classifier(nn.Module):
             else:
                 temporal_aggregation = torch.mean(TRN_out,1)
         else:
-            temporal_aggregation = torch.mean(x,1)
+            temporal_aggregation =self.AvgPool(x).reshape(x.shape[0],x.shape[2])
         #temporal domain
         if(self.ablation_mask["gtd"]):
             temporal_domain_out =  self.gtd(ReverseLayerF.apply(temporal_aggregation,alpha))

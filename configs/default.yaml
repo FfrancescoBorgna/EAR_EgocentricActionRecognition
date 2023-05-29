@@ -10,8 +10,8 @@ logname: null # name of the logs
 models_dir: null # directory containing all the models
 
 train:
-  num_iter: 5000 # number of training iterations with total_batch size
-  lr_steps: 3000 # steps before reducing learning rate
+  num_iter: 4000 # number of training iterations with total_batch size
+  lr_steps: 2000 # steps before reducing learning rate
   eval_freq: 50 # evaluation frequency
   num_clips: 5 # clips adopted in training
   dense_sampling: # sampling version adopted in training for each modality
@@ -28,7 +28,7 @@ test:
 
 dataset:
   annotations_path: train_val # path for the annotations data
-  shift: D1-D2 # shifts of the dataset
+  shift: D1-D1 # shifts of the dataset
   workers: 4 # number of workers for the dataloader 
   persistentWorkers: True
   stride: 2 # stride in case of dense sampling
@@ -46,12 +46,12 @@ models:
     model: Classifier
     normalize: False
     kwargs: {}
-    lr_steps: 3000
+    lr_steps: 2000
     lr: 1e-2
     gamma: 0
     sgd_momentum: 0.8
     weight_decay: 1e-7
-    temporal-type: mean
+    temporal-type: TRN
     ablation: 
       gsd: False
       gtd: False
