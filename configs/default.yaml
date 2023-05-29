@@ -29,8 +29,8 @@ test:
 dataset:
   annotations_path: train_val # path for the annotations data
   shift: D1-D2 # shifts of the dataset
-  workers: 4 # number of workers for the dataloader 
-  persistentWorkers: True
+  workers: 0 # number of workers for the dataloader 
+  persistentWorkers: False
   stride: 2 # stride in case of dense sampling
   resolution: 224 # input resolution to the model
   RGB:
@@ -54,6 +54,6 @@ models:
     temporal-type: TRN
     ablation: 
       gsd: False
-      gtd: False
-      grd: False
-      domainA: False
+      gtd: True
+      grd: True
+      domainA: True
