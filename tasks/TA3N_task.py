@@ -55,6 +55,7 @@ class TA3N_task(tasks.Task, ABC):
         self.batch_size = batch_size
         self.device = device
 
+        self.gamma = model_args['RGB'].gamma
         # Use the cross entropy loss as the default criterion for the classification task
         self.criterion_class = torch.nn.CrossEntropyLoss(weight=None, size_average=None, ignore_index=-100,
                                                    reduce=None, reduction='none')
@@ -130,12 +131,18 @@ class TA3N_task(tasks.Task, ABC):
                 fused_logits_td = reduce(lambda x, y: x + y, logits["td"].values())
                 self.loss_td.update(self.criterion_td(fused_logits_td, label_d))
                 loss +=  0.5*self.loss_td.val
+                
+                # Loss AE
+                softmax = nn.Softmax(dim=1)
+                logsoftmax = nn.LogSoftmax(dim=1)
+                #domain_entropy = torch.sum(-(fused_logits_td) * torch.log(fused_logits_td+eps), 1)
+                #class_entropy = torch.sum(-(fused_logits_class) * torch.log(fused_logits_class+eps), 1) 
 
-                domain_entropy = torch.sum(-(fused_logits_td) * torch.log(fused_logits_td+eps), 1)
-                class_entropy = torch.sum(-(fused_logits_class) * torch.log(fused_logits_class+eps), 1) 
-            
+                domain_entropy = torch.sum(-softmax(fused_logits_td) * logsoftmax(fused_logits_td+eps), 1)
+                class_entropy = torch.sum(-softmax(fused_logits_class) * logsoftmax(fused_logits_class+eps), 1) 
+
                 loss_ae = (1+domain_entropy)*class_entropy
-                loss+= 0.5*loss_ae;
+                loss+= 0.5*self.gamma*loss_ae;
         
             if(self.model_args['RGB']["temporal-type"]=="TRN" and self.model_args['RGB']["ablation"]["grd"]):
                 fused_logits_rd = reduce(lambda x, y: x + y, logits["rd"].values())
@@ -162,10 +169,18 @@ class TA3N_task(tasks.Task, ABC):
                 loss += 0.5*self.loss_td.val
 
                 #Loss ae
-                domain_entropy = torch.sum(-(fused_logits_td) * torch.log(fused_logits_td+eps), 1)
-                class_entropy = torch.sum(-(fused_logits_class) * torch.log(fused_logits_class+eps), 1)   
+                softmax = nn.Softmax(dim=1)
+                logsoftmax = nn.LogSoftmax(dim=1)
+                
+                #domain_entropy = torch.sum(-(fused_logits_td) * torch.log(fused_logits_td+eps), 1)
+                #class_entropy = torch.sum(-(fused_logits_class) * torch.log(fused_logits_class+eps), 1) 
+
+                domain_entropy = torch.sum(-softmax(fused_logits_td) * logsoftmax(fused_logits_td+eps), 1)
+                class_entropy = torch.sum(-softmax(fused_logits_class) * logsoftmax(fused_logits_class+eps), 1) 
+
+
                 loss_ae = (1+domain_entropy)*class_entropy
-                loss+= 0.5*loss_ae;
+                loss+= 0.5*self.gamma*loss_ae;
             
             if(self.model_args['RGB']["temporal-type"]=="TRN" and self.model_args['RGB']["ablation"]["grd"]):
                 fused_logits_rd = reduce(lambda x, y: x + y, logits["rd"].values())

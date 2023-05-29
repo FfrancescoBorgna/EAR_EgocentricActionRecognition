@@ -115,7 +115,8 @@ class Classifier(nn.Module):
 
                     softmax = nn.Softmax(dim=2)
                     logsoftmax = nn.LogSoftmax(dim=2)
-                    entropy = torch.sum(-(grd_outs) * torch.log(grd_outs), 2).nan_to_num()
+                    #entropy = torch.sum(-(grd_outs) * torch.log(grd_outs), 2).nan_to_num()
+                    entropy = torch.sum(-softmax(grd_outs) * logsoftmax(grd_outs), 2)
                     weights = 1-entropy
                     weights = weights.unsqueeze(2).repeat(1,1,TRN_out.shape[2]) #[32,4] -> [32,4,#feat] on dim=2 repeate the element of the second dim
 
