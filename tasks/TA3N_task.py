@@ -202,6 +202,7 @@ class TA3N_task(tasks.Task, ABC):
         fused_logits_class_source = reduce(lambda x, y: x + y, logits_source["class"].values())
         loss_class_source = self.criterion_class(fused_logits_class_source, label_class_source)
         self.loss_class.update(loss_class_source)
+        loss+= self.loss_class.val
 
         loss_sd = 0
         if(self.model_args['RGB']["ablation"]["gsd"]):
@@ -211,13 +212,59 @@ class TA3N_task(tasks.Task, ABC):
             loss_sd += self.criterion_sd(fused_logits_sd_target, label_d_target) 
             self.loss_sd.update(loss_sd)
 
-        
-        
+            loss+= loss_sd
+        loss_td = 0    
+        if(self.model_args['RGB']["ablation"]["gtd"]):    
+            fused_logits_td_source = reduce(lambda x, y: x + y, logits_source["td"].values())
+            fused_logits_td_target = reduce(lambda x, y: x + y, logits_target["td"].values())
+            
+            loss_td += self.criterion_td(fused_logits_td_source,label_d_source)
+            loss_td += self.criterion_td(fused_logits_td_target,label_d_target)
+            self.loss_td.update(loss_td)
+            
+            # Loss AE
+            fused_logits_class_target = reduce(lambda x, y: x + y, logits_target["class"].values())
+             
+            loss_ae_source = computeEntropyLoss(fused_logits_td_source,fused_logits_class_source)
+            loss_ae_target = computeEntropyLoss(fused_logits_td_target,fused_logits_class_target)
 
-        #combine target and source
-        loss = self.loss_class.val + self.loss_sd.val + self.loss_td.val+self.loss_rd.val
+            loss_ae = loss_ae_source + loss_ae_target;
+            
+            #Update loss           
+            loss += loss_td+self.gamma *loss_ae
+        if(self.model_args['RGB']["temporal-type"]=="TRN" and self.model_args['RGB']["ablation"]["grd"]):
+            #TODO
+            loss_rd = self.compute_loss_rd(logits_source,logits_target,label_d_source,label_d_target)
+            self.loss_rd.update(loss_rd)
+
+            loss+=loss_rd
+        #  <----–-------–-------–-------–-------–-------–-------–-------
+
         self.loss.update(torch.mean(loss_weight * loss) / (self.total_batch / self.batch_size), self.batch_size)
         return
+    def compute_loss_td(self,logits_source,logits_target,label_d_source,label_d_target):
+        fused_logits_td_source = reduce(lambda x, y: x + y, logits_source["td"].values())
+        fused_logits_td_target = reduce(lambda x, y: x + y, logits_target["td"].values())
+        
+        loss_td += self.criterion_td(fused_logits_td_source,label_d_source)
+        loss_td += self.criterion_td(fused_logits_td_target,label_d_target)
+        self.loss_td.update(loss_td)
+        return loss_td
+
+
+            
+    def compute_loss_rd(self,logits_source,logits_target,label_d_source,label_d_target):
+        fused_logits_rd_source = reduce(lambda x, y: x + y, logits_source["rd"].values())
+        fused_logits_rd_target = reduce(lambda x, y: x + y, logits_target["rd"].values())
+
+        loss_rd_source = 0
+        loss_rd_target = 0
+
+        for i in range(0,self.num_clips-1):
+                    loss_rd_source += self.criterion_rd(fused_logits_rd_source[:,i,:], label_d_source)
+                    loss_rd_target += self.criterion_rd(fused_logits_rd_target[:,i,:], label_d_target)
+        
+        return loss_rd_source + loss_rd_target
     def compute_accuracy(self, logits_source: Dict[str, torch.Tensor], label: torch.Tensor):
         """Fuse the logits from different modalities and compute the classification accuracy.
 
@@ -303,3 +350,14 @@ class TA3N_task(tasks.Task, ABC):
         if(self.model_args['RGB']['ablation']['grd']):    
             losses[3] = torch.mean(self.loss_rd.avg)
         return losses
+    
+
+
+def computeEntropyLoss(fused_logits_td,fused_logits_class):
+    softmax = nn.Softmax(dim=1)
+    logsoftmax = nn.LogSoftmax(dim=1)
+    eps = 1e-7
+    domain_entropy = torch.sum(-softmax(fused_logits_td) * logsoftmax(fused_logits_td+eps), 1)
+    class_entropy = torch.sum(-softmax(fused_logits_class) * logsoftmax(fused_logits_class+eps), 1) 
+    loss_ae = (1+domain_entropy)*class_entropy
+    return loss_ae
