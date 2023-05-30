@@ -11,7 +11,7 @@ models_dir: null # directory containing all the models
 
 train:
   num_iter: 5000 # number of training iterations with total_batch size
-  lr_steps: 2000 # steps before reducing learning rate
+  lr_steps: 3000 # steps before reducing learning rate
   eval_freq: 50 # evaluation frequency
   num_clips: 5 # clips adopted in training
   dense_sampling: # sampling version adopted in training for each modality
@@ -29,8 +29,8 @@ test:
 dataset:
   annotations_path: train_val # path for the annotations data
   shift: D1-D2 # shifts of the dataset
-  workers: 0 # number of workers for the dataloader 
-  persistentWorkers: False
+  workers: 8 # number of workers for the dataloader 
+  persistentWorkers: True
   stride: 2 # stride in case of dense sampling
   resolution: 224 # input resolution to the model
   RGB:
@@ -55,5 +55,5 @@ models:
     ablation: 
       gsd: False
       gtd: True
-      grd: True
-      domainA: True
+      grd: False
+      domainA: False
