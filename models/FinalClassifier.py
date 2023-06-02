@@ -47,7 +47,7 @@ class Classifier(nn.Module):
             self.gsd.add_module('gsd_bn2', nn.BatchNorm1d( n_gsd//2))
             self.gsd.add_module('gsd_relu2', nn.LeakyReLU(0.1))      
             self.gsd.add_module('gsd_fc3', nn.Linear( n_gsd//2, 2))
-            #self.gsd.add_module('gsd_softmax', nn.Softmax(dim=1))
+            
         
         #Temporal Pooling
         if(temporal_type == "TRN"):
@@ -66,7 +66,7 @@ class Classifier(nn.Module):
                         nn.BatchNorm1d(n_grd_out//2),
                         nn.ReLU(True) ,
                         nn.Linear(n_grd_out//2, 2),
-                        #nn.Softmax(dim=1)
+                        
                         )
                     self.grd_all += [grd]
         
@@ -83,15 +83,17 @@ class Classifier(nn.Module):
             self.gtd.add_module('gtd_bn2',     nn.BatchNorm1d(n_gtd//2))
             self.gtd.add_module('gtd_relu2',   nn.LeakyReLU(0.1))      
             self.gtd.add_module('gtd_fc3',     nn.Linear(n_gtd//2, 2))
-            #self.gtd.add_module('gtd_softmax', nn.Softmax(dim=1))
+            
         
         #Gy
+        #1
         self.gy = nn.Sequential()
-        self.gy.add_module('c_fc1', nn.Linear(n_gsf_out,n_gsf_out//2))
-        self.gy.add_module('gy_bn1', nn.BatchNorm1d(n_gsf_out//2))
-        self.gy.add_module('gy_relu1', nn.LeakyReLU(0.1))
-        self.gy.add_module('gy_fc2', nn.Linear(n_gsf_out//2, num_class))
-        #self.gy.add_module('c_softmax', nn.Softmax(dim=1))
+        #self.gy.add_module('c_fc1', nn.Linear(n_gsf_out,n_gsf_out//2))
+        #self.gy.add_module('gy_bn1', nn.BatchNorm1d(n_gsf_out//2))
+        #self.gy.add_module('gy_relu1', nn.LeakyReLU(0.1))
+        #self.gy.add_module('gy_fc2', nn.Linear(n_gsf_out//2, num_class))
+       #2
+        self.gy.add_module('gy_fc1', nn.Linear(n_gsf_out, num_class))
 
 
     def forward(self, x,alpha = 1):

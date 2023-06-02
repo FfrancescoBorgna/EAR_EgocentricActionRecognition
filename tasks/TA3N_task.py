@@ -51,6 +51,7 @@ class TA3N_task(tasks.Task, ABC):
         self.loss_td = utils.AverageMeter()
         self.loss_sd = utils.AverageMeter()
         self.loss_rd = utils.AverageMeter()
+        self.loss_ae = utils.AverageMeter()
 
 
         
@@ -204,7 +205,7 @@ class TA3N_task(tasks.Task, ABC):
         self.loss_class.update(loss_class_source)
         loss+= self.loss_class.val
 
-        loss_sd = 0
+        loss_sd =0
         if(self.model_args['RGB']["ablation"]["gsd"]):
             fused_logits_sd_source = reduce(lambda x, y: x + y, logits_source["sd"].values())
             fused_logits_sd_target = reduce(lambda x, y: x + y, logits_target["sd"].values())
@@ -213,7 +214,7 @@ class TA3N_task(tasks.Task, ABC):
             self.loss_sd.update(loss_sd)
 
             loss+= loss_sd
-        loss_td = 0    
+        loss_td = 0 
         if(self.model_args['RGB']["ablation"]["gtd"]):    
             fused_logits_td_source = reduce(lambda x, y: x + y, logits_source["td"].values())
             fused_logits_td_target = reduce(lambda x, y: x + y, logits_target["td"].values())
@@ -228,12 +229,11 @@ class TA3N_task(tasks.Task, ABC):
             loss_ae_source = computeEntropyLoss(fused_logits_td_source,fused_logits_class_source)
             loss_ae_target = computeEntropyLoss(fused_logits_td_target,fused_logits_class_target)
 
-            loss_ae = loss_ae_source + loss_ae_target;
+            self.loss_ae.update(loss_ae_source + loss_ae_target);
             
             #Update loss           
-            loss += loss_td+self.gamma *loss_ae
+            loss += loss_td+self.gamma *self.loss_ae.val
         if(self.model_args['RGB']["temporal-type"]=="TRN" and self.model_args['RGB']["ablation"]["grd"]):
-            #TODO
             loss_rd = self.compute_loss_rd(logits_source,logits_target,label_d_source,label_d_target)
             self.loss_rd.update(loss_rd)
 
