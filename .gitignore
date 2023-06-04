@@ -194,3 +194,4 @@ train_images/
 saved_models/
 Experiment_logs/
 audio_feat/
+RGB_Audio_features/

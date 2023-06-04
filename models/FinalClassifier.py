@@ -132,8 +132,8 @@ class Classifier(nn.Module):
                 else:
                     temporal_aggregation = self.AvgPool(TRN_out).reshape(TRN_out.shape[0],TRN_out.shape[2])
             else:
-                #temporal_aggregation = self.AvgPool(TRN_out).reshape(TRN_out.shape[0],TRN_out.shape[2])
-                temporal_aggregation = torch.sum(TRN_out,dim=1)
+                temporal_aggregation = self.AvgPool(TRN_out).reshape(TRN_out.shape[0],TRN_out.shape[2])
+                #temporal_aggregation = torch.sum(TRN_out,dim=1)
         else:
             temporal_aggregation =self.AvgPool(x).reshape(x.shape[0],x.shape[2])
         #temporal domain
